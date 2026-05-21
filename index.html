@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Estimador de Copago</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: sans-serif;
+			background: #0f172a;
+			color: #e2f0ff;
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 20px;
+		}
+
+		.card {
+			background: rgba(255,255,255,0.05);
+			border: 1px solid rgba(255,255,255,0.1);
+			border-radius: 16px;
+			padding: 32px;
+			max-width: 600px;
+			width: 100%;
+		}
+
+		h1 {
+			font-size: 24px;
+			margin-bottom: 8px;
+		}
+
+		p.sub {
+			color: #94b8d4;
+			font-size: 14px;
+			margin-bottom: 24px;
+		}
+
+		label {
+			font-size: 13px;
+			color: #94b8d4;
+			display: block;
+			margin-bottom: 6px;
+		}
+
+		select, textarea {
+			width: 100%;
+			padding: 12px;
+			border-radius: 10px;
+			border: 1px solid rgba(255,255,255,0.1);
+			background: rgba(255,255,255,0.05);
+			color: #e2f0ff;
+			font-size: 14px;
+			margin-bottom: 16px;
+			font-family: sans-serif;
+		}
+
+		textarea {
+			height: 100px;
+			resize: none;
+		}
+
+		button {
+			width: 100%;
+			padding: 14px;
+			border-radius: 10px;
+			border: none;
+			background: linear-gradient(90deg, #3b82f6, #2563eb);
+			color: #fff;
+			font-size: 16px;
+			font-weight: 600;
+			cursor: pointer;
+		}
+
+			button:disabled {
+				opacity: 0.5;
+				cursor: default;
+			}
+
+		.resultado {
+			margin-top: 24px;
+			background: rgba(255,255,255,0.04);
+			border: 1px solid rgba(255,255,255,0.08);
+			border-radius: 12px;
+			padding: 20px;
+			display: none;
+		}
+
+			.resultado h2 {
+				font-size: 18px;
+				margin-bottom: 12px;
+				color: #93c5fd;
+			}
+
+		.badge {
+			display: inline-block;
+			padding: 4px 12px;
+			border-radius: 20px;
+			font-size: 12px;
+			margin-bottom: 12px;
+		}
+
+		.urgente {
+			background: rgba(220,38,38,0.2);
+			color: #fca5a5;
+		}
+
+		.alta {
+			background: rgba(239,68,68,0.2);
+			color: #fca5a5;
+		}
+
+		.media {
+			background: rgba(245,158,11,0.2);
+			color: #fcd34d;
+		}
+
+		.baja {
+			background: rgba(34,197,94,0.2);
+			color: #86efac;
+		}
+
+		.info {
+			font-size: 14px;
+			color: #94b8d4;
+			margin-bottom: 16px;
+		}
+
+		.hospital {
+			background: rgba(255,255,255,0.04);
+			border-radius: 8px;
+			padding: 12px 16px;
+			margin-bottom: 8px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+			.hospital span {
+				font-size: 14px;
+			}
+
+		.copago {
+			font-weight: 700;
+			color: #34d399;
+			font-size: 16px;
+		}
+
+		.loading {
+			text-align: center;
+			color: #4a7a9b;
+			font-size: 14px;
+			margin-top: 16px;
+			display: none;
+		}
+	</style>
+</head>
+<body>
+	<div class="card">
+		<h1>🏥 Estimador de Copago</h1>
+		<p class="sub">Describe tu síntoma y te decimos cuánto pagarás con tu seguro</p>
+
+		<label>Tu plan de seguro</label>
+		<select id="plan">
+			<option value="IESS">IESS - Seguro General</option>
+			<option value="SALUD_SA">Salud S.A. - Plan Básico</option>
+			<option value="BUPA">BUPA Ecuador - Premium</option>
+		</select>
+
+		<label>¿Cómo te sientes?</label>
+		<textarea id="sintoma" placeholder="Ej: me duele el pecho y tengo dificultad para respirar..."></textarea>
+
+		<button id="btn" onclick="consultar()">Consultar →</button>
+
+		<div class="loading" id="loading">⏳ Analizando tu síntoma...</div>
+
+		<div class="resultado" id="resultado">
+			<h2>Resultado</h2>
+			<div id="contenido"></div>
+		</div>
+	</div>
+
+	<script>
+    async function consultar() {
+      const sintoma = document.getElementById("sintoma").value.trim();
+      const plan = document.getElementById("plan").value;
+      if (!sintoma) return alert("Por favor describe tu síntoma");
+
+      document.getElementById("btn").disabled = true;
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("resultado").style.display = "none";
+
+      try {
+        // Paso 1: detectar especialidad
+        const r1 = await fetch("http://127.0.0.1:8000/detectar-especialidad", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sintoma })
+        });
+        const especialidad = await r1.json();
+
+        // Paso 2: calcular copago
+        const r2 = await fetch("http://127.0.0.1:8000/calcular-copago", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ especialidad: especialidad.especialidad, plan_id: plan })
+        });
+        const copago = await r2.json();
+
+        // Mostrar resultado
+        let html = `
+          <span class="badge ${especialidad.urgencia}">Urgencia: ${especialidad.urgencia}</span>
+          <p class="info"><strong>Especialidad:</strong> ${especialidad.especialidad}</p>
+          <p class="info"><strong>Por qué:</strong> ${especialidad.explicacion}</p>
+          <p class="info"><strong>Cobertura:</strong> ${copago.cobertura_porcentaje}%</p>
+          <hr style="border-color:rgba(255,255,255,0.1); margin: 12px 0">
+          <p class="info" style="margin-bottom:12px"><strong>Hospitales recomendados:</strong></p>
+        `;
+
+        copago.hospitales.forEach((h, i) => {
+          html += `
+            <div class="hospital">
+              <span>${i === 0 ? "⭐ " : ""}${h.nombre}</span>
+              <span class="copago">$${h.copago_final}</span>
+            </div>
+          `;
+        });
+
+        document.getElementById("contenido").innerHTML = html;
+        document.getElementById("resultado").style.display = "block";
+
+      } catch (e) {
+        alert("Error al conectar con el servidor. ¿Está corriendo el backend?");
+      }
+
+      document.getElementById("btn").disabled = false;
+      document.getElementById("loading").style.display = "none";
+    }
+	</script>
+</body>
+</html>
