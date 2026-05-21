@@ -199,7 +199,7 @@
 
       try {
         // Paso 1: detectar especialidad
-        const r1 = await fetch("http://127.0.0.1:8000/detectar-especialidad", {
+		  const r1 = await fetch("https://hackiathon-copago-ai-production.up.railway.app/detectar-especialidad", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sintoma })
@@ -207,7 +207,7 @@
         const especialidad = await r1.json();
 
         // Paso 2: calcular copago
-        const r2 = await fetch("http://127.0.0.1:8000/calcular-copago", {
+		  const r2 = await fetch("https://hackiathon-copago-ai-production.up.railway.app/calcular-copago", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ especialidad: especialidad.especialidad, plan_id: plan })
